@@ -1,0 +1,47 @@
+services:
+  influxdb2:
+    image: influxdb:2
+    ports:
+      - "8086:8086"
+    env_file:
+      - .env
+    environment:
+      DOCKER_INFLUXDB_INIT_MODE: setup
+      DOCKER_INFLUXDB_INIT_USERNAME: ${INFLUXDB_USERNAME}
+      DOCKER_INFLUXDB_INIT_PASSWORD: ${INFLUXDB_PASSWORD}
+      DOCKER_INFLUXDB_INIT_ADMIN_TOKEN: ${INFLUXDB_TOKEN}
+      DOCKER_INFLUXDB_INIT_ORG: ${INFLUXDB_ORG}
+      DOCKER_INFLUXDB_INIT_BUCKET: ${INFLUXDB_BUCKET}
+    volumes:
+      - influxdb2-data:/var/lib/influxdb2
+      - influxdb2-config:/etc/influxdb2
+
+  backend:
+    build:
+      context: ./backend
+    ports:
+      - "4000:4000"
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+      PORT: 4000
+      MQTT_URL: mqtt://host.docker.internal:1883
+      MQTT_TELEMETRY_TOPIC: +/telemetry
+      MQTT_STATUS_TOPIC: +/status
+      INFLUX_URL: http://influxdb2:8086
+      INFLUX_MEASUREMENT: sensor_data
+    depends_on:
+      - influxdb2
+
+  frontend:
+    build:
+      context: ./frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+
+volumes:
+  influxdb2-data:
+  influxdb2-config:
